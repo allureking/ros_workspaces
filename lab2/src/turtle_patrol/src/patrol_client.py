@@ -31,4 +31,8 @@ if __name__ == '__main__':
         print("Usage: patrol_client.py <turtle_name> <vel> <omega> <x> <y> <theta>")
         sys.exit(1)
 
+<<<<<<< HEAD
     patrol_client(turtle_name, vel, omega, x, y, theta)
+=======
+    patrol_client(turtle_name, vel, omega, x, y, theta)
+>>>>>>> a7e9033489ac72fd23cc2c91aea1829f05164329
