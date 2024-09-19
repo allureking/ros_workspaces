@@ -1,4 +1,5 @@
 # Request message types
+string turtle_name # Name of the turtle
 float32 vel     # Linear velocity   
 float32 omega   # Angular velocity
 float32 x       # X coordinate (initial pos)
