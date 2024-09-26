@@ -45,6 +45,24 @@ def baxter_forward_kinematics_from_angles(joint_angles):
                     [0.7102, 0.7040, 0.0055]]).T # rotation matrix of zero config
 
     # YOUR CODE HERE (Task 1)
+    # Initialize xi_array to store the twists for each joint
+    xi_array = np.zeros((6, 7))
+
+    # Compute the twists for each joint
+    for i in range(7):
+        v = -np.cross(ws[:, i], qs[:, i])  # Linear velocity part for revolute joint
+        xi_array[0:3, i] = v  # Assign the linear part
+        xi_array[3:6, i] = ws[:, i]  # Assign the angular part (rotation axis)
+
+    # Compute the forward kinematics using the product of exponentials formula
+    g = np.matmul(kfs.prod_exp(xi_array, joint_angles), np.block([
+        [R, np.reshape(qs[:, 7], (3, 1))],
+        [np.zeros((1, 3)), 1]
+    ]))
+
+    print(g)
+    # Return the transformation matrix
+    return g
 
 def baxter_forward_kinematics_from_joint_state(joint_state):
     """
@@ -60,8 +78,14 @@ def baxter_forward_kinematics_from_joint_state(joint_state):
     (4x4) np.ndarray: homogenous transformation matrix
     """
     
+    # Extract the joint angles from the joint state
+    # Baxter's left arm joints: ['left_s0', 'left_s1', 'left_e0', 'left_e1', 'left_w0', 'left_w1', 'left_w2']
+    joint_names = ['left_s0', 'left_s1', 'left_e0', 'left_e1', 'left_w0', 'left_w1', 'left_w2']
     angles = np.zeros(7)
 
+    for i, name in enumerate(joint_names):
+        index = joint_state.name.index(name)  # Find the index of the joint in the JointState message
+        angles[i] = joint_state.position[index]  # Assign the joint angle
     # YOUR CODE HERE (Task 2)
 
     # END YOUR CODE HERE

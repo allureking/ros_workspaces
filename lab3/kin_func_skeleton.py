@@ -1,3 +1,4 @@
+# %%
 #!/usr/bin/env python
 """
 Kinematic function skeleton code for Lab 3 prelab.
@@ -17,7 +18,7 @@ code by running "python kin_func_skeleton.py at the command line.
 import numpy as np
 
 np.set_printoptions(precision=4,suppress=True)
-
+# %%
 #-----------------------------2D Examples---------------------------------------
 #--(you don't need to modify anything here but you should take a look at them)--
 
@@ -89,7 +90,7 @@ def homog_2d(xi, theta):
     g[2,2] = 1
 
     return g
-
+# %%
 #-----------------------------3D Functions--------------------------------------
 #-------------(These are the functions you need to complete)--------------------
 
@@ -104,7 +105,12 @@ def skew_3d(omega):
     omega_hat - (3,3) ndarray: the corresponding skew symmetric matrix
     """
 
-    # YOUR CODE HERE
+    omega_hat = np.array([[0, -omega[2], omega[1]],
+                          [omega[2], 0, -omega[0]],
+                          [-omega[1], omega[0], 0]])
+    return omega_hat
+
+
 
 def rotation_3d(omega, theta):
     """
@@ -118,7 +124,19 @@ def rotation_3d(omega, theta):
     rot - (3,3) ndarray: the resulting rotation matrix
     """
 
-    # YOUR CODE HERE
+    omega_hat = skew_3d(omega)
+    omega_norm = np.linalg.norm(omega)
+    
+    if omega_norm == 0:
+        return np.eye(3)
+    
+    omega_hat = omega_hat / omega_norm
+    I = np.eye(3)
+    rot = I + np.sin(theta * omega_norm) * omega_hat + (1 - np.cos(theta * omega_norm)) * np.dot(omega_hat, omega_hat)
+    
+    return rot
+
+
 
 def hat_3d(xi):
     """
@@ -131,7 +149,17 @@ def hat_3d(xi):
     xi_hat - (4,4) ndarray: the corresponding 4x4 matrix
     """
 
-    # YOUR CODE HERE
+    v = xi[:3]
+    omega = xi[3:]
+    omega_hat = skew_3d(omega)
+    
+    xi_hat = np.zeros((4, 4))
+    xi_hat[:3, :3] = omega_hat
+    xi_hat[:3, 3] = v
+    
+    return xi_hat
+
+
 
 def homog_3d(xi, theta):
     """
@@ -145,7 +173,29 @@ def homog_3d(xi, theta):
     g - (4,4) ndarary: the resulting homogeneous transformation matrix
     """
 
-    # YOUR CODE HERE
+    v = xi[:3]
+    omega = xi[3:]
+    
+    omega_norm = np.linalg.norm(omega)
+    
+    if omega_norm == 0:
+        g = np.eye(4)
+        g[:3, 3] = v * theta
+        return g
+    
+    omega_hat = skew_3d(omega)
+    R = rotation_3d(omega, theta)
+    
+    term1 = np.dot(np.eye(3) - R, np.dot(omega_hat, v)) / (omega_norm ** 2)
+    term2 = np.outer(omega, omega).dot(v) * theta / (omega_norm ** 2)
+    p = term1 + term2
+    
+    g = np.eye(4)
+    g[:3, :3] = R
+    g[:3, 3] = p
+    
+    return g
+
 
 
 def prod_exp(xi, theta):
@@ -161,8 +211,13 @@ def prod_exp(xi, theta):
     g - (4,4) ndarray: the resulting homogeneous transformation matrix
     """
 
-    # YOUR CODE HERE
+    g = np.eye(4)
+    for i in range(theta.size):
+        g = np.dot(g, homog_3d(xi[:, i], theta[i]))
+    return g
 
+    
+# %%
 #---------------------------------TESTING CODE---------------------------------
 #-------------------------DO NOT MODIFY ANYTHING BELOW HERE--------------------
 
@@ -227,3 +282,4 @@ if __name__ == "__main__":
     array_func_test(prod_exp, func_args, ret_desired)
 
     print('Done!')
+    # %%
