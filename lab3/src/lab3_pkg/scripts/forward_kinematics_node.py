@@ -4,7 +4,6 @@ import rospy
 from sensor_msgs.msg import JointState  # ROS message for joint states
 from forward_kinematics import baxter_forward_kinematics_from_joint_state
 import tf2_ros   # tf2 used to listen to transforms
-import tf2_ros.tf2_ros
 import geometry_msgs.msg
 
 def joint_state_callback(msg, tfBuffer):
