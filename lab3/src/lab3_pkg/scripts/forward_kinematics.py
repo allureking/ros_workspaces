@@ -83,10 +83,10 @@ def baxter_forward_kinematics_from_joint_state(joint_state):
     joint_names = ['left_s0', 'left_s1', 'left_e0', 'left_e1', 'left_w0', 'left_w1', 'left_w2']
     angles = np.zeros(7)
 
+    # YOUR CODE HERE (Task 2)
     for i, name in enumerate(joint_names):
         index = joint_state.name.index(name)  # Find the index of the joint in the JointState message
         angles[i] = joint_state.position[index]  # Assign the joint angle
-    # YOUR CODE HERE (Task 2)
 
     # END YOUR CODE HERE
     print(baxter_forward_kinematics_from_angles(angles))
