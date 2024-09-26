@@ -84,9 +84,15 @@ def baxter_forward_kinematics_from_joint_state(joint_state):
     angles = np.zeros(7)
 
     # YOUR CODE HERE (Task 2)
+    # Extract the joint angles from the JointState message
     for i, name in enumerate(joint_names):
         index = joint_state.name.index(name)  # Find the index of the joint in the JointState message
         angles[i] = joint_state.position[index]  # Assign the joint angle
 
     # END YOUR CODE HERE
-    print(baxter_forward_kinematics_from_angles(angles))
+
+    # Call baxter_forward_kinematics_from_angles to compute the transformation matrix
+    g = baxter_forward_kinematics_from_angles(angles)
+    print(g)
+
+    return g
