@@ -24,7 +24,6 @@ def controller(turtlebot_frame, goal_frame):
 
   ################################### YOUR CODE HERE ##############
 
-
   #Create a publisher and a tf buffer, which is primed with a tf listener
   pub = rospy.Publisher('/cmd_vel', Twist, queue_size=10)
   tfBuffer = tf2_ros.Buffer()
@@ -39,20 +38,24 @@ def controller(turtlebot_frame, goal_frame):
   # Loop until the node is killed with Ctrl-C
   while not rospy.is_shutdown():
     try:
-      trans = tfBuffer.lookup_transform(goal_frame, turtlebot_frame, rospy.Time())
-
+      trans = tfBuffer.lookup_transform(turtlebot_frame, goal_frame, rospy.Time(0))
 
       # Process trans to get your state error
       # Generate a control command to send to the robot
+      # Extract the position difference between the Turtlebot and the target
+      error_x = trans.transform.translation.x
+      error_y = trans.transform.translation.y
 
-      # Process the transformation to calculate the error in position
-      error_x = trans.transform.translation.x  # x-axis error
-      error_y = trans.transform.translation.y  # y-axis error
+      # Calculate the linear velocity based on the x error
+      linear_velocity = K1 * error_x
 
-      # Generate the control command based on proportional control
+      # Calculate the angular velocity based on the y error
+      angular_velocity = K2 * error_y
+
+      # Create a Twist message with the calculated velocities
       control_command = Twist()
-      control_command.linear.x = K1 * error_x  # Control the linear velocity
-      control_command.angular.z = K2 * error_y  # Control the angular velocity
+      control_command.linear.x = linear_velocity
+      control_command.angular.z = angular_velocity
 
       #################################### end your code ###############
 
