@@ -50,15 +50,17 @@ class OccupancyGrid2d(object):
         self._random_downsample = rospy.get_param("~random_downsample")
 
         # Dimensions and bounds.
-        # TODO! You'll need to set values for class variables called:
-        # -- self._x_num
-        # -- self._x_min
-        # -- self._x_max
-        # -- self._x_res # The resolution in x. Note: This isn't a ROS parameter. What will you do instead?
-        # -- self._y_num
-        # -- self._y_min
-        # -- self._y_max
-        # -- self._y_res # The resolution in y. Note: This isn't a ROS parameter. What will you do instead?
+        self._x_min = rospy.get_param("~x_min", -10.0)
+        self._x_max = rospy.get_param("~x_max", 10.0)
+        self._x_num = rospy.get_param("~x_num", 200)
+        
+        self._y_min = rospy.get_param("~y_min", -10.0)
+        self._y_max = rospy.get_param("~y_max", 10.0)
+        self._y_num = rospy.get_param("~y_num", 200)
+
+        # Calculate resolutions based on loaded parameters
+        self._x_res = (self._x_max - self._x_min) / self._x_num
+        self._y_res = (self._y_max - self._y_min) / self._y_num
 
         # Update parameters.
         if not rospy.has_param("~update/occupied"):
@@ -81,15 +83,13 @@ class OccupancyGrid2d(object):
         self._free_threshold = self.ProbabilityToLogOdds(
             rospy.get_param("~update/free_threshold"))
 
-        # Topics.
-        # TODO! You'll need to set values for class variables called:
-        # -- self._sensor_topic
-        # -- self._vis_topic
+        # Topics
+        self._sensor_topic = rospy.get_param("~sensor_topic", "/scan")
+        self._vis_topic = rospy.get_param("~vis_topic", "/occupancy_grid")
 
-        # Frames.
-        # TODO! You'll need to set values for class variables called:
-        # -- self._sensor_frame
-        # -- self._fixed_frame
+        # Frames
+        self._sensor_frame = rospy.get_param("~sensor_frame", "base_scan")
+        self._fixed_frame = rospy.get_param("~fixed_frame", "map")
 
         return True
 
@@ -146,7 +146,16 @@ class OccupancyGrid2d(object):
                 continue
 
             # Get angle of this ray in fixed frame.
-            # TODO!
+            
+            # Get angle of this ray in the sensor frame
+            angle = msg.angle_min + idx * msg.angle_increment
+
+            # Transform angle to fixed frame (map frame)
+            ray_angle = yaw + angle
+
+            # Compute endpoint of the laser ray in the fixed frame
+            end_x = sensor_x + r * np.cos(ray_angle)
+            end_y = sensor_y + r * np.sin(ray_angle)
 
             # Throw out this point if it is too close or too far away.
             if r > msg.range_max:
@@ -162,7 +171,24 @@ class OccupancyGrid2d(object):
             # Update log-odds at each voxel along the way.
             # Only update each voxel once. 
             # The occupancy grid is stored in self._map
-            # TODO!
+
+            # Get the grid coordinates of the endpoint
+            grid_end_x, grid_end_y = self.PointToVoxel(end_x, end_y)
+
+            # Get the grid coordinates of the sensor
+            grid_sensor_x, grid_sensor_y = self.PointToVoxel(sensor_x, sensor_y)
+
+            # Use Bresenham's line algorithm to find all cells along the ray
+            cells = self.bresenham(grid_sensor_x, grid_sensor_y, grid_end_x, grid_end_y)
+
+            # Update the log-odds for each cell along the ray
+            for i, j in cells[:-1]:  # Exclude the last cell (end point)
+                self._map[i, j] -= self._free_update
+
+            # Update the log-odds of the endpoint cell
+            if 0 <= grid_end_x < self._x_num and 0 <= grid_end_y < self._y_num:
+                self._map[grid_end_x, grid_end_y] += self._occupied_update
+
 
         # Visualize.
         self.Visualize()
@@ -224,3 +250,26 @@ class OccupancyGrid2d(object):
                 m.colors.append(self.Colormap(ii, jj))
 
         self._vis_pub.publish(m)
+
+    # Add a function to perform Bresenham's line drawing in grid coordinates:
+    def bresenham(self, x0, y0, x1, y1):
+        points = []
+        dx = abs(x1 - x0)
+        dy = abs(y1 - y0)
+        sx = 1 if x0 < x1 else -1
+        sy = 1 if y0 < y1 else -1
+        err = dx - dy
+
+        while True:
+            points.append((x0, y0))
+            if x0 == x1 and y0 == y1:
+                break
+            e2 = err * 2
+            if e2 > -dy:
+                err -= dy
+                x0 += sx
+            if e2 < dx:
+                err += dx
+                y0 += sy
+
+        return points
