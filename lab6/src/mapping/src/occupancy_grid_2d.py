@@ -50,17 +50,15 @@ class OccupancyGrid2d(object):
         self._random_downsample = rospy.get_param("~random_downsample")
 
         # Dimensions and bounds.
-        self._x_min = rospy.get_param("~x_min", -10.0)
-        self._x_max = rospy.get_param("~x_max", 10.0)
-        self._x_num = rospy.get_param("~x_num", 200)
-        
-        self._y_min = rospy.get_param("~y_min", -10.0)
-        self._y_max = rospy.get_param("~y_max", 10.0)
-        self._y_num = rospy.get_param("~y_num", 200)
+        self._x_num = rospy.get_param("~x/num")
+        self._x_min = rospy.get_param("~x/min")
+        self._x_max = rospy.get_param("~x/max")
+        self._x_res = (self._x_max - self._x_min) / self._x_num  # The resolution in x.
 
-        # Calculate resolutions based on loaded parameters
-        self._x_res = (self._x_max - self._x_min) / self._x_num
-        self._y_res = (self._y_max - self._y_min) / self._y_num
+        self._y_num = rospy.get_param("~y/num")
+        self._y_min = rospy.get_param("~y/min")
+        self._y_max = rospy.get_param("~y/max")
+        self._y_res = (self._y_max - self._y_min) / self._y_num  # The resolution in y.
 
         # Update parameters.
         if not rospy.has_param("~update/occupied"):
@@ -84,12 +82,12 @@ class OccupancyGrid2d(object):
             rospy.get_param("~update/free_threshold"))
 
         # Topics
-        self._sensor_topic = rospy.get_param("~sensor_topic", "/scan")
-        self._vis_topic = rospy.get_param("~vis_topic", "/occupancy_grid")
+        self._sensor_topic = rospy.get_param("~topics/sensor")
+        self._vis_topic = rospy.get_param("~topics/vis")
 
         # Frames
-        self._sensor_frame = rospy.get_param("~sensor_frame", "base_scan")
-        self._fixed_frame = rospy.get_param("~fixed_frame", "map")
+        self._sensor_frame = rospy.get_param("~frames/sensor")
+        self._fixed_frame = rospy.get_param("~frames/fixed")
 
         return True
 
@@ -146,12 +144,8 @@ class OccupancyGrid2d(object):
                 continue
 
             # Get angle of this ray in fixed frame.
-            
-            # Get angle of this ray in the sensor frame
-            angle = msg.angle_min + idx * msg.angle_increment
-
-            # Transform angle to fixed frame (map frame)
-            ray_angle = yaw + angle
+            ith_angle = msg.angle_min + idx * msg.angle_increment
+            fixed_ith_angle = ith_angle + yaw
 
             # Compute endpoint of the laser ray in the fixed frame
             end_x = sensor_x + r * np.cos(ray_angle)
@@ -171,23 +165,27 @@ class OccupancyGrid2d(object):
             # Update log-odds at each voxel along the way.
             # Only update each voxel once. 
             # The occupancy grid is stored in self._map
+            last_voxel = None
+            for dist in np.arange(r, 0, -min(self._x_res, self._y_res)):
+                x = sensor_x + dist * np.cos(fixed_ith_angle)
+                y = sensor_y + dist * np.sin(fixed_ith_angle)
+                grid_x, grid_y = self.PointToVoxel(x, y)
 
-            # Get the grid coordinates of the endpoint
-            grid_end_x, grid_end_y = self.PointToVoxel(end_x, end_y)
+                # Determine if the voxel is occupied or free
+                if last_voxel is None:
+                    last_voxel = True
+                    # Occupied cell: upper-bounded by the threshold
+                    self._map[grid_x, grid_y] = min(
+                        self._occupied_threshold, 
+                        self._map[grid_x, grid_y] + self._occupied_update
+                    )
+                else:
+                    # Free cell: lower-bounded by the threshold
+                    self._map[grid_x, grid_y] = max(
+                        self._free_threshold, 
+                        self._map[grid_x, grid_y] + self._free_update
+                    )
 
-            # Get the grid coordinates of the sensor
-            grid_sensor_x, grid_sensor_y = self.PointToVoxel(sensor_x, sensor_y)
-
-            # Use Bresenham's line algorithm to find all cells along the ray
-            cells = self.bresenham(grid_sensor_x, grid_sensor_y, grid_end_x, grid_end_y)
-
-            # Update the log-odds for each cell along the ray
-            for i, j in cells[:-1]:  # Exclude the last cell (end point)
-                self._map[i, j] -= self._free_update
-
-            # Update the log-odds of the endpoint cell
-            if 0 <= grid_end_x < self._x_num and 0 <= grid_end_y < self._y_num:
-                self._map[grid_end_x, grid_end_y] += self._occupied_update
 
 
         # Visualize.
@@ -250,26 +248,3 @@ class OccupancyGrid2d(object):
                 m.colors.append(self.Colormap(ii, jj))
 
         self._vis_pub.publish(m)
-
-    # Add a function to perform Bresenham's line drawing in grid coordinates:
-    def bresenham(self, x0, y0, x1, y1):
-        points = []
-        dx = abs(x1 - x0)
-        dy = abs(y1 - y0)
-        sx = 1 if x0 < x1 else -1
-        sy = 1 if y0 < y1 else -1
-        err = dx - dy
-
-        while True:
-            points.append((x0, y0))
-            if x0 == x1 and y0 == y1:
-                break
-            e2 = err * 2
-            if e2 > -dy:
-                err -= dy
-                x0 += sx
-            if e2 < dx:
-                err += dx
-                y0 += sy
-
-        return points
