@@ -147,10 +147,6 @@ class OccupancyGrid2d(object):
             ith_angle = msg.angle_min + idx * msg.angle_increment
             fixed_ith_angle = ith_angle + yaw
 
-            # Compute endpoint of the laser ray in the fixed frame
-            end_x = sensor_x + r * np.cos(ray_angle)
-            end_y = sensor_y + r * np.sin(ray_angle)
-
             # Throw out this point if it is too close or too far away.
             if r > msg.range_max:
                 rospy.logwarn("%s: Range %f > %f was too large.",
