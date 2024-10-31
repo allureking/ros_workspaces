@@ -16,9 +16,16 @@ def ik_service_client():
     pose_stamped.header = header
 
     # Set end effector position: YOUR CODE HERE
+    pose_stamped.pose.position.x = float(input("Input the x coords for the gripper:"))
+    pose_stamped.pose.position.y = float(input("Input the y coords for the gripper:"))
+    pose_stamped.pose.position.z = float(input("Input the z coords for the gripper:"))
     
     # Set end effector quaternion: YOUR CODE HERE
-
+    pose_stamped.pose.orientation.x = 0.0
+    pose_stamped.pose.orientation.y = 1.0
+    pose_stamped.pose.orientation.z = 0.0
+    pose_stamped.pose.orientation.w = 0.0
+      
     # Add desired pose for inverse kinematics
     ik_request.pose_stamp.append(pose_stamped)
     # Request inverse kinematics from base to "right_hand" link
@@ -29,6 +36,7 @@ def ik_service_client():
     try:
         rospy.wait_for_service(service_name, 5.0)
         response = ik_service_proxy(ik_request)
+        print(f"Returned joint angles: {response}")
     except (rospy.ServiceException, rospy.ROSException) as e:
         rospy.logerr("Service call failed: %s" % (e,))
         return
