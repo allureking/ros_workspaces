@@ -41,14 +41,14 @@ def main():
         request.ik_request.pose_stamped.pose.position.x = 0.752
         request.ik_request.pose_stamped.pose.position.y = -0.015
         request.ik_request.pose_stamped.pose.position.z = -0.161
-        request.ik_request.pose_stamped.pose.orientation.x = 0.077
-        request.ik_request.pose_stamped.pose.orientation.y = 0.987
-        request.ik_request.pose_stamped.pose.orientation.z = -0.112
-        request.ik_request.pose_stamped.pose.orientation.w = 0.090
-        # request.ik_request.pose_stamped.pose.orientation.x = 0.0
-        # request.ik_request.pose_stamped.pose.orientation.y = 1.0
-        # request.ik_request.pose_stamped.pose.orientation.z = 0.0
-        # request.ik_request.pose_stamped.pose.orientation.w = 0.0
+        # request.ik_request.pose_stamped.pose.orientation.x = 0.077
+        # request.ik_request.pose_stamped.pose.orientation.y = 0.987
+        # request.ik_request.pose_stamped.pose.orientation.z = -0.112
+        # request.ik_request.pose_stamped.pose.orientation.w = 0.090
+        request.ik_request.pose_stamped.pose.orientation.x = 0.0
+        request.ik_request.pose_stamped.pose.orientation.y = 1.0
+        request.ik_request.pose_stamped.pose.orientation.z = 0.0
+        request.ik_request.pose_stamped.pose.orientation.w = 0.0
 
         try:
             # Send the request to the IK service
@@ -89,14 +89,14 @@ def main():
         request.ik_request.pose_stamped.pose.position.x = 0.752
         request.ik_request.pose_stamped.pose.position.y = 0.255
         request.ik_request.pose_stamped.pose.position.z = -0.147
-        request.ik_request.pose_stamped.pose.orientation.x = 0.084
-        request.ik_request.pose_stamped.pose.orientation.y = 0.996
-        request.ik_request.pose_stamped.pose.orientation.z = -0.021
-        request.ik_request.pose_stamped.pose.orientation.w = 0.035
-        # request.ik_request.pose_stamped.pose.orientation.x = 0.0
-        # request.ik_request.pose_stamped.pose.orientation.y = 1.0
-        # request.ik_request.pose_stamped.pose.orientation.z = 0.0
-        # request.ik_request.pose_stamped.pose.orientation.w = 0.0
+        # request.ik_request.pose_stamped.pose.orientation.x = 0.084
+        # request.ik_request.pose_stamped.pose.orientation.y = 0.996
+        # request.ik_request.pose_stamped.pose.orientation.z = -0.021
+        # request.ik_request.pose_stamped.pose.orientation.w = 0.035
+        request.ik_request.pose_stamped.pose.orientation.x = 0.0
+        request.ik_request.pose_stamped.pose.orientation.y = 1.0
+        request.ik_request.pose_stamped.pose.orientation.z = 0.0
+        request.ik_request.pose_stamped.pose.orientation.w = 0.0
 
         try:
             # Send the request to the IK service
