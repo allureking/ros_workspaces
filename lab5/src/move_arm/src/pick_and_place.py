@@ -1,101 +1,124 @@
 #!/usr/bin/env python
 import rospy
-from moveit_msgs.srv import GetPositionIK, GetPositionIKRequest, GetPositionIKResponse
+from moveit_msgs.srv import GetPositionIK, GetPositionIKRequest
 from geometry_msgs.msg import PoseStamped
 from moveit_commander import MoveGroupCommander
-import numpy as np
-from numpy import linalg
-import sys
 from intera_interface import gripper as robot_gripper
-
-# Initialize the gripper
-right_gripper = robot_gripper.Gripper('right_gripper')
-
-# Define the recorded pick and place positions
-pick_position = {
-    "position": [0.752, -0.015, -0.161],
-    "orientation": [0.077, 0.987, -0.112, 0.090]
-}
-
-place_position = {
-    "position": [0.752, 0.255, -0.147],
-    "orientation": [0.084, 0.996, -0.021, 0.035]
-}
-
-# The fuction to move the gripper to the desired object position
-def move_to_pose(compute_ik, group, position, orientation):
-    # Construct the IK request
-    request = GetPositionIKRequest()
-    request.ik_request.group_name = "right_arm"
-    request.ik_request.ik_link_name = "right_gripper_tip"
-    request.ik_request.pose_stamped.header.frame_id = "base"
-
-    # Set the desired position and orientation for the end effector
-    request.ik_request.pose_stamped.pose.position.x = position[0]
-    request.ik_request.pose_stamped.pose.position.y = position[1]
-    request.ik_request.pose_stamped.pose.position.z = position[2]
-    request.ik_request.pose_stamped.pose.orientation.x = orientation[0]
-    request.ik_request.pose_stamped.pose.orientation.y = orientation[1]
-    request.ik_request.pose_stamped.pose.orientation.z = orientation[2]
-    request.ik_request.pose_stamped.pose.orientation.w = orientation[3]
-    
-    try:
-        # Send the request to the IK service
-        response = compute_ik(request)
-        
-        # Check if the IK solution is valid
-        if response.result_type[0] > 0:
-            rospy.loginfo("IK Solution Found!")
-            group.set_pose_target(request.ik_request.pose_stamped)
-            plan = group.plan()
-            
-            # Confirm the plan in RViz
-            user_input = input("Enter 'y' if the trajectory looks safe in RVIZ: ")
-            if user_input.lower() == 'y':
-                group.execute(plan[1])
-            else:
-                rospy.logwarn("Trajectory was not confirmed. Skipping execution.")
-        else:
-            rospy.logerr("No valid IK solution found.")
-    except rospy.ServiceException as e:
-        rospy.logerr("Service call failed: %s" % e)
 
 
 def main():
-    # Initialize ROS and set up the service and MoveIt commander
+    # Wait for the IK service to become available
     rospy.wait_for_service('compute_ik')
-    rospy.init_node('pick_and_place_demo')
-
-    # Create the IK service proxy and MoveIt group commander
-    compute_ik = rospy.ServiceProxy('compute_ik', GetPositionIK)
-    group = MoveGroupCommander("right_arm")
-
-    # Initialize and calibrate the gripper
-    rospy.loginfo("Calibrating gripper...")
+    rospy.init_node('pick_and_place_task')
+    
+    # Initialize the gripper
+    right_gripper = robot_gripper.Gripper('right_gripper')
+    print('Calibrating...')
     right_gripper.calibrate()
     rospy.sleep(2.0)
 
-    # Move to the pick position
-    rospy.loginfo("Moving to pick position...")
-    move_to_pose(compute_ik, group, pick_position["position"], pick_position["orientation"])
+    # Create the function used to call the IK service
+    compute_ik = rospy.ServiceProxy('compute_ik', GetPositionIK)
 
-    # Close the gripper to grasp the object
-    rospy.loginfo("Closing gripper to pick up the object...")
-    right_gripper.close()
-    rospy.sleep(1.0)
+    while not rospy.is_shutdown():
+        input('Press [ Enter ] to start the pick and place task: ')
 
-    # Move to the place position
-    rospy.loginfo("Moving to place position...")
-    move_to_pose(compute_ik, group, place_position["position"], place_position["orientation"])
+        # =====================
+        # PICK POSITION
+        # =====================
+        # Construct the IK request
+        request = GetPositionIKRequest()
+        request.ik_request.group_name = "right_arm"
+        link = "right_gripper_tip"  # Ensure this is the correct link name
+        request.ik_request.ik_link_name = link
+        # request.ik_request.attempts = 20
+        request.ik_request.pose_stamped.header.frame_id = "base"
 
-    # Open the gripper to release the object
-    rospy.loginfo("Opening gripper to release the object...")
-    right_gripper.open()
-    rospy.sleep(1.0)
+        # Set the pick position and orientation from recorded values
+        request.ik_request.pose_stamped.pose.position.x = 0.752
+        request.ik_request.pose_stamped.pose.position.y = -0.015
+        request.ik_request.pose_stamped.pose.position.z = -0.161
+        request.ik_request.pose_stamped.pose.orientation.x = 0.077
+        request.ik_request.pose_stamped.pose.orientation.y = 0.987
+        request.ik_request.pose_stamped.pose.orientation.z = -0.112
+        request.ik_request.pose_stamped.pose.orientation.w = 0.090
+        # request.ik_request.pose_stamped.pose.orientation.x = 0.0
+        # request.ik_request.pose_stamped.pose.orientation.y = 1.0
+        # request.ik_request.pose_stamped.pose.orientation.z = 0.0
+        # request.ik_request.pose_stamped.pose.orientation.w = 0.0
 
-    rospy.loginfo("Pick and place task completed.")
-    
+        try:
+            # Send the request to the IK service
+            response = compute_ik(request)
+            print(response)
+            group = MoveGroupCommander("right_arm")
 
-# Python's syntax for a main() method
+            # Set target pose for the arm
+            group.set_pose_target(request.ik_request.pose_stamped)
+
+            # Plan and visualize the IK solution
+            plan = group.plan()
+            user_input = input("Enter 'y' if the trajectory looks safe in RVIZ: ")
+            
+            if user_input == 'y':
+                # Execute the pick motion
+                group.execute(plan[1])
+                rospy.sleep(1.0)
+
+                # Close the gripper to pick up the object
+                print('Closing gripper...')
+                right_gripper.close()
+                rospy.sleep(1.0)
+            
+        except rospy.ServiceException as e:
+            print("Service call failed: %s" % e)
+
+        # =====================
+        # PLACE POSITION
+        # =====================
+        # Construct the IK request for the place position
+        request = GetPositionIKRequest()
+        request.ik_request.group_name = "right_arm"
+        request.ik_request.ik_link_name = link
+        request.ik_request.pose_stamped.header.frame_id = "base"
+
+        # Set the place position and orientation from recorded values
+        request.ik_request.pose_stamped.pose.position.x = 0.752
+        request.ik_request.pose_stamped.pose.position.y = 0.255
+        request.ik_request.pose_stamped.pose.position.z = -0.147
+        request.ik_request.pose_stamped.pose.orientation.x = 0.084
+        request.ik_request.pose_stamped.pose.orientation.y = 0.996
+        request.ik_request.pose_stamped.pose.orientation.z = -0.021
+        request.ik_request.pose_stamped.pose.orientation.w = 0.035
+        # request.ik_request.pose_stamped.pose.orientation.x = 0.0
+        # request.ik_request.pose_stamped.pose.orientation.y = 1.0
+        # request.ik_request.pose_stamped.pose.orientation.z = 0.0
+        # request.ik_request.pose_stamped.pose.orientation.w = 0.0
+
+        try:
+            # Send the request to the IK service
+            response = compute_ik(request)
+            print(response)
+            # group = MoveGroupCommander("right_arm")
+            group.set_pose_target(request.ik_request.pose_stamped)
+
+            # Plan and visualize the IK solution for placing
+            plan = group.plan()
+            user_input = input("Enter 'y' if the trajectory looks safe in RVIZ: ")
+
+            if user_input == 'y':
+                # Execute the place motion
+                group.execute(plan[1])
+                rospy.sleep(1.0)
+
+                # Open the gripper to release the object
+                print('Opening gripper...')
+                right_gripper.open()
+                rospy.sleep(1.0)
+            
+        except rospy.ServiceException as e:
+            print("Service call failed: %s" % e)
+
+# Main method
 if __name__ == '__main__':
     main()
