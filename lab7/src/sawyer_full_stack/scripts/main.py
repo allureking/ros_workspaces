@@ -66,7 +66,7 @@ def lookup_tag(tag_number):
     try:
         # TODO: lookup the transform and save it in trans
         # print(tfBuffer.allFramesAsStringNoLock(),'\n')
-        trans = tfBuffer.lookup_transform('base', 'ar_marker_15', rospy.Time(0), rospy.Duration(10.0))
+        trans = tfBuffer.lookup_transform('base', 'ar_marker_9', rospy.Time(0), rospy.Duration(10.0))
         print('here\n\n')
     except Exception as e:
         print(e)
