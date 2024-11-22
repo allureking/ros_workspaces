@@ -90,8 +90,8 @@ class ObjectDetector:
         upper_rgb = np.array([170, 0, 255])
 
         # Convert RGB thresholds to HSV
-        lower_hsv = np.array([140, 50, 50])#self.rgb_to_hsv(lower_rgb)
-        upper_hsv = np.array([160, 255, 255])#self.rgb_to_hsv(upper_rgb)
+        lower_hsv = np.array([60, 150, 60])#self.rgb_to_hsv(lower_rgb)
+        upper_hsv = np.array([80, 255, 210])#self.rgb_to_hsv(upper_rgb)
 
         # TODO: Threshold the image to get only cup colors
         # HINT: Lookup np.where() or cv2.inRange()
