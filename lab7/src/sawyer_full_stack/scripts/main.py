@@ -66,8 +66,8 @@ def lookup_tag(tag_number):
     try:
         # TODO: lookup the transform and save it in trans
         # print(tfBuffer.allFramesAsStringNoLock(),'\n')
-        trans = tfBuffer.lookup_transform('base', 'ar_marker_9', rospy.Time(0), rospy.Duration(10.0))
-        print('here\n\n')
+        trans = tfBuffer.lookup_transform('base', 'ar_marker_11', rospy.Time(0), rospy.Duration(10.0))
+        print('trans saved\n\n')
     except Exception as e:
         print(e)
         print("Retrying ...")
@@ -187,7 +187,8 @@ def main():
     tuck()
     
     # this is used for sending commands (velocity, torque, etc) to the robot
-    ik_solver = IK("base", "right_gripper_tip")
+    # ik_solver = IK("base", "right_gripper_tip")
+    ik_solver = IK("base", "stp_022312TP99620_tip_1") # at Station 8 for "Amir" robot
     limb = intera_interface.Limb("right")
     kin = sawyer_kinematics("right")
 
