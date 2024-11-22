@@ -43,17 +43,17 @@ class ObjectDetector:
         rospy.spin()
 
     def camera_info_callback(self, msg):
-        # TODO: Extract the intrinsic parameters from the CameraInfo message (look this message type up online)
-        self.fx = ...
-        self.fy = ...
-        self.cx = ...
-        self.cy = ...
+        # TODO: Extract the intrinsic parameters from the CameraInfo message
+        self.fx = msg.K[0]
+        self.fy = msg.K[4]
+        self.cx = msg.K[2]
+        self.cy = msg.K[5]
 
     def pixel_to_point(self, u, v, depth):
         # TODO: Use the camera intrinsics to convert pixel coordinates to real-world coordinates
-        X = ...
-        Y = ...
-        Z = ...
+        X = (u - self.cx) * depth / self.fx
+        Y = (v - self.cy) * depth / self.fy
+        Z = depth 
         return X, Y, Z
 
     def color_image_callback(self, msg):
@@ -76,30 +76,35 @@ class ObjectDetector:
         except Exception as e:
             print("Error:", e)
 
+    def rgb_to_hsv(self, rgb_threshold):
+        # Convert the RGB numpy array to an HSV numpy array.
+        hsv_threshold = cv2.cvtColor(np.uint8([[rgb_threshold]]), cv2.COLOR_RGB2HSV)[0][0]
+        return hsv_threshold        
+
     def process_images(self):
         # Convert the color image to HSV color space
         hsv = cv2.cvtColor(self.cv_color_image, cv2.COLOR_BGR2HSV)
         # TODO: Define range for cup color in HSV
         # NOTE: You can visualize how this is performing by viewing the result of the segmentation in rviz
-        # To see the current HSV values in the center row of the image (where your cup should be), we will print out
-        # the HSV mean of the HSV values of the center row. You should add at least +/- 10 to the current Hue value and
-        # +/- 80 to the current Saturation and Value values to define your range.
-        mean_center_row_hsv_val = np.mean(hsv[len(hsv)//2], axis=0)
-        print("Current mean values at center row of image: ", mean_center_row_hsv_val)
-        lower_hsv = np.array(...) # TODO: Define lower HSV values for cup color
-        upper_hsv = np.array(...) # TODO: Define upper HSV values for cup color
+        lower_rgb = np.array([50, 40, 47])
+        upper_rgb = np.array([170, 0, 255])
+
+        # Convert RGB thresholds to HSV
+        lower_hsv = np.array([140, 50, 50])#self.rgb_to_hsv(lower_rgb)
+        upper_hsv = np.array([160, 255, 255])#self.rgb_to_hsv(upper_rgb)
 
         # TODO: Threshold the image to get only cup colors
-        # HINT: Lookup cv2.inRange()
-        mask = ...
+        # HINT: Lookup np.where() or cv2.inRange()
+        mask = cv2.inRange(hsv, lower_hsv, upper_hsv)
+        #np.where(hsv > .1 and hsv < 0.3, 1, 0)
 
         # TODO: Get the coordinates of the cup points on the mask
-        # HINT: Lookup np.nonzero()
-        y_coords, x_coords = ...
+        # HINT: Lookup np.nonzero() or np.where()
+        y_coords, x_coords = np.where(mask == 255)#np.nonzero(mask)
 
         # If there are no detected points, exit
         if len(x_coords) == 0 or len(y_coords) == 0:
-            print("No points detected. Is your color filter wrong?")
+            print("No points detected")
             return
 
         # Calculate the center of the detected region by 
@@ -108,7 +113,8 @@ class ObjectDetector:
 
         # Fetch the depth value at the center
         depth = self.cv_depth_image[center_y, center_x]
-
+        # print('test 0')
+        # print(self.fx, self.fy, self.cx, self.cy)
         if self.fx and self.fy and self.cx and self.cy:
             camera_x, camera_y, camera_z = self.pixel_to_point(center_x, center_y, depth)
             camera_link_x, camera_link_y, camera_link_z = camera_z, -camera_x, -camera_y
@@ -116,10 +122,10 @@ class ObjectDetector:
             camera_link_x /= 1000
             camera_link_y /= 1000
             camera_link_z /= 1000
-
+            # print('test 1')
             # Convert the (X, Y, Z) coordinates from camera frame to odom frame
             try:
-                self.tf_listener.waitForTransform("/odom", "/camera_link", rospy.Time(), rospy.Duration(10.0))
+                self.tf_listener.waitForTransform("odom", "camera_link", rospy.Time(), rospy.Duration(10.0))
                 point_odom = self.tf_listener.transformPoint("/odom", PointStamped(header=Header(stamp=rospy.Time(), frame_id="/camera_link"), point=Point(camera_link_x, camera_link_y, camera_link_z)))
                 X_odom, Y_odom, Z_odom = point_odom.point.x, point_odom.point.y, point_odom.point.z
                 print("Real-world coordinates in odom frame: (X, Y, Z) = ({:.2f}m, {:.2f}m, {:.2f}m)".format(X_odom, Y_odom, Z_odom))
@@ -138,6 +144,7 @@ class ObjectDetector:
                     
                     # Convert to ROS Image message and publish
                     ros_image = self.bridge.cv2_to_imgmsg(cup_img, "bgr8")
+                    # print(ros_image)
                     self.image_pub.publish(ros_image)
             except (tf.LookupException, tf.ConnectivityException, tf.ExtrapolationException) as e:
                 print("TF Error: " + e)
